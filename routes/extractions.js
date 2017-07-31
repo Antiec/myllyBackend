@@ -26,6 +26,7 @@ router.post('/', function(req, res, next) {
     grinder: req.body.grinder,
     dose: req.body.dose,
     extractionTime: req.body.extractionTime,
+    weight: req.body.weight,
     grade: req.body.grade,
     notes: req.body.notes},
   ])
