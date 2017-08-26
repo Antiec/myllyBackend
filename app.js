@@ -31,6 +31,14 @@ app.use('/users', users);
 app.use('/api/extractions', extractions);
 app.use('/api/grinder', grinder);
 
+
+var express = require('express');
+app = express();
+app.use(function(req, res, next) {
+  req.headers['if-none-match'] = 'no-match-for-this';
+  next();
+});
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   var err = new Error('Not Found');
