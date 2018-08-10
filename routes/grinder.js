@@ -1,63 +1,65 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const PythonShell = require('python-shell');
+const PythonShell = require("python-shell");
 
-const monk = require('monk')
+const monk = require("monk");
 
 // Connection URL
-const url = 'localhost:27017/grinderDB';
+const url = "grinderUser:grinderPwd9@localhost:27017/grinderDB";
 
-const db = monk(url);
+const db = monk(url, { authSource: "admin" });
 
 db.then(() => {
-  console.log('extractions: Connected correctly to the grinderDB')
-})
+  console.log("extractions: Connected correctly to the grinderDB");
+});
 
-const collection = db.get('grinder')
+const collection = db.get("grinder");
 
-router.get('/', function(req, res, next) {
-  console.log('Get to grinder');
-  collection.findOne().then((results) => {
+router.get("/", function(req, res, next) {
+  console.log("Get to grinder");
+  collection.findOne().then(results => {
     res.send(results);
   });
 });
 
-/* POST new grinder value for moving. */
-router.put('/:id', function(req, res, next) {
-  //console.log(req.headers);
-  if( req.params.id === 'move' ) {
+/* PUT new grinder value for moving. */
+router.put("/:type", function(req, res, next) {
+  console.log(`Put to grinder with type ${req.params.type}`);
+  let hadAnError = false;
+  if (req.params.type === "move") {
     console.log("Moving to", req.body.grinder);
 
     let options = {
-      mode: 'text',
+      mode: "text",
       args: []
     };
     options.args = req.body.grinder;
     console.log("amount: " + options.args);
-    PythonShell.run('interface.py', options, function (err, results) {
-      if (err) throw err;
+
+    PythonShell.run("interface.py", options, function(err, results) {
+      if (err) {
+        throw err;
+      }
       // results is an array consisting of messages collected during execution
       //console.log('results: %j', results);
+    }).then(() => {
+      collection.findOne({}).then(doc => {
+        if (doc !== null)
+          collection.update({}, { $set: { currentValue: req.body.grinder } });
+        else collection.insert([{ currentValue: req.body.grinder }]);
+      });
+      console.log("Error: " + hadAnError);
     });
-    collection.findOne({}).then( doc => {
-      if( doc !== null )
-        collection.update({}, { $set: { currentValue: req.body.grinder } });
-      else
-        collection.insert([{ currentValue: req.body.grinder, }]);
-    });
-  }else if( req.params.id === 'set') {
-    collection.findOne({}).then( doc => {
+  } else if (req.params.type === "set") {
+    collection.findOne({}).then(doc => {
       console.log(doc);
-      if( doc !== null )
+      if (doc !== null)
         collection.update({}, { $set: { currentValue: req.body.grinder } });
-      else
-        collection.insert([{ currentValue: req.body.grinder, }]);
-      }
-    );
+      else collection.insert([{ currentValue: req.body.grinder }]);
+    });
   }
-
-  //res.writeHead(200, {'Access-Control-Allow-Origin': '*'});
   res.send("ok");
+  //res.writeHead(200, {'Access-Control-Allow-Origin': '*'});
 });
 
 module.exports = router;
